@@ -1,27 +1,19 @@
+
 import random
 from collections import Counter
 
-DICE_ID_COUTNER = 1
-PLAYER_ID_COUNTER = 1
-
 class Dice():
     def __init__(self):
-        global DICE_ID_COUTNER
         self.value = 1
-        self.ID = DICE_ID_COUTNER
-        DICE_ID_COUTNER += 1
 
     def roll(self):
         self.value = random.randint(1, 6)
 
 class Player():
     def __init__(self, name):
-        global PLAYER_ID_COUNTER
         self.name = name
         self.total_score = 0
         self.turn_score = 0
-        self.ID = PLAYER_ID_COUNTER
-        PLAYER_ID_COUNTER += 1
     
     def reset_turn_score(self):
         self.turn_score = 0
@@ -38,6 +30,7 @@ class Game():
         self.selected_dice = []
         self.player_index = 0
         self.game_over = 0
+        self.turn_count = 0
 
     def roll_available_dice(self):
         for dice in self.available_dice:
@@ -102,7 +95,8 @@ class Game():
             #Check for six of a kind
             for value, count in selection_counts.items():
                 if count == 6:
-                    return (f"six_of_a_kind_{value}s", 3000)
+                    mends.append((f"six_of_a_kind_{value}s", 3000))
+                    return mends
 
             #Check for full run
             all_values_once = True
@@ -111,7 +105,8 @@ class Game():
                     all_values_once = False
                     break
             if all_values_once:
-                return ("full_run", 2500)
+                mends.append(("full_run", 2500))
+                return mends
 
             #Check for three pairs
             pair_count = 0
@@ -119,7 +114,8 @@ class Game():
                 if count == 2:
                     pair_count += 1
             if pair_count == 3:
-                return ("three_pairs", 1500)
+                mends.append(("three_pairs", 1500))
+                return mends
 
         #Check for scorable combinations
         for value, count in selection_counts.items():
@@ -189,10 +185,13 @@ class Game():
         return score
 
     def play_turn(self):
+        self.turn_count += 1
         player = self.players[self.player_index]
         self.available_dice = [Dice() for _ in range(6)]  # Start with fresh 6 dice
         self.selected_dice = []
         player.reset_turn_score()
+
+        print(f"Turn {self.turn_count}")
 
         while True:
             self.roll_available_dice()
@@ -203,32 +202,45 @@ class Game():
                 player.reset_turn_score()
                 break
 
-            dice_input_string = input("Enter the dice you want to score: ")
+            dice_input_string = input("\tEnter the dice you want to score: ")
+
+            if dice_input_string == "quit":
+                print("Quit the game")
+                self.game_over = 1
+                return
+
             while not self.is_valid_input(dice_input_string):
-                dice_input_string = input("Invalid input. Try again: ")
+                dice_input_string = input("\tInvalid input. Try again: ")
 
             score = self.score_selection(self.selected_dice)
             player.turn_score += score
-            print(f"Turn score: {player.turn_score}")
+            print(f"\tTurn score: {player.turn_score}")
 
             remaining_dice_count = len(self.available_dice)
 
             if remaining_dice_count == 0:
                 self.available_dice = [Dice() for _ in range(6)]
-                print("🔥 Hot dice! You get to roll all six again.")
+                print("\tHot dice!")
             else:
-                action = input(f"Roll remaining {remaining_dice_count} dice (r) or bank {player.turn_score} points (b)? ")
+                action = input(f"\tRoll remaining {remaining_dice_count} dice (r) or bank {player.turn_score} points (b)? ")
                 while action not in ["r", "b"]:
-                    action = input("Invalid input. Type 'r' to roll or 'b' to bank: ")
+                    action = input("\tInvalid input. Enter (r) to roll or (b) to bank: ")
 
                 if action == "b":
                     player.bank()
                     break
 
+    def print_score(self):
+        print("#########################SCOREBOARD#########################")
+        for player in self.players:
+            print(f"{player.name}: {player.total_score}")
+        print("############################################################")
+
     def play(self):
-        print("Welcome to Farkle!")
+        print("#####################Welcome to Farkle!#####################")
         while self.game_over != 1:
             self.play_turn()
+            self.print_score()
             self.switch_players()
             self.check_winner()
 
