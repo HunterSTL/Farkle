@@ -2,6 +2,24 @@
 import random
 from collections import Counter
 
+def print_melds():
+    print("############################################################")
+    print("Meld\t\tPoints")
+    print("5\t\t50")
+    print("1\t\t100")
+    print("Triple 2\t200")
+    print("Triple 3\t300")
+    print("Triple 4\t400")
+    print("Triple 5\t500")
+    print("Triple 6\t600")
+    print("Triple 1\t1000")
+    print("Four of a kind\t1000")
+    print("Three pairs\t1500")
+    print("Five of a kind\t2000")
+    print("Full run\t2500")
+    print("Six of a kind\t3000")
+    print("############################################################")
+
 class Dice():
     def __init__(self):
         self.value = 1
@@ -58,6 +76,19 @@ class Game():
             string += str(value) + ", "
         return string[:-2]
 
+    def get_input(self, prompt):
+        while True:
+            user_input = input(prompt).lower().strip()
+
+            if user_input == "quit":
+                print("Quit the game")
+                self.game_over = 1
+                return None
+            elif user_input == "melds":
+                print_melds()
+                continue
+            return user_input
+
     def select_dice_by_selection(self, selection):
         selected_dice = []
         available_dice = self.available_dice.copy()
@@ -71,22 +102,6 @@ class Game():
         return [selected_dice, available_dice]
 
     def get_mends(self, selected_dice):
-        """
-        Melds:
-        5               50
-        1               100
-        triple 2        200
-        triple 3        300
-        triple 4        400
-        triple 5        500
-        triple 6        600
-        triple 1        1000
-        four of a kind  1000
-        three pair      1500
-        five of a kind  2000
-        full run        2500
-        six of a kind   3000
-        """
         mends = []
         selection = [dice.value for dice in selected_dice]                      #Convert the selected_dice into a list of integers
         selection_counts = Counter(selection)                                   #Count how many times each value appears in selection
@@ -142,11 +157,11 @@ class Game():
         else:
             return False
 
-    def is_valid_input(self, dice_input_string):
-        if not dice_input_string.isdigit():                                         #Check if all characters are digits
+    def is_valid_input(self, input_string):
+        if not input_string.isdigit():                                         #Check if all characters are digits
             return False
         
-        selection = [int(digit) for digit in dice_input_string]                     #Convert the string into a list of integers ("12225" --> [1, 2, 2, 2, 5])
+        selection = [int(digit) for digit in input_string]                     #Convert the string into a list of integers ("12225" --> [1, 2, 2, 2, 5])
         selection_counts = Counter(selection)                                       #Count how many times each value appears in selection
         current_roll_values = [dice.value for dice in self.available_dice]          #Put the values of the rolled dice into a list
         rolled_counts = Counter(current_roll_values)                                #Count how many times each value appears in the current roll
@@ -154,7 +169,7 @@ class Game():
         for value in selection_counts:                                              #Check whether there are more occurrences of a value in the selection than the current roll
             if selection_counts[value] > rolled_counts.get(value, 0):
                 return False
-        [selected_dice, available_dice] = self.select_dice_by_selection(selection)  #The dice are selected after it's confirmed that there's a dice for each digit in the dice_input_string
+        [selected_dice, available_dice] = self.select_dice_by_selection(selection)  #The dice are selected after it's confirmed that there's a dice for each digit in the input_string
         if self.is_valid_scoring(selected_dice):                                    #Check whether the selected dice make valid mends (no lone 2s, 3s, 4s, and 6s)
             self.selected_dice = selected_dice
             self.available_dice = available_dice
@@ -202,15 +217,14 @@ class Game():
                 player.reset_turn_score()
                 break
 
-            dice_input_string = input("\tEnter the dice you want to score: ")
-
-            if dice_input_string == "quit":
-                print("Quit the game")
-                self.game_over = 1
-                return
-
-            while not self.is_valid_input(dice_input_string):
-                dice_input_string = input("\tInvalid input. Try again: ")
+            while True:
+                input_string = self.get_input("\tEnter the dice you want to score: ")
+                if input_string is None:
+                    return
+                if self.is_valid_input(input_string):
+                    break
+                else:
+                    print("\tInvalid input. Try again.")
 
             score = self.score_selection(self.selected_dice)
             player.turn_score += score
@@ -222,9 +236,13 @@ class Game():
                 self.available_dice = [Dice() for _ in range(6)]
                 print("\tHot dice!")
             else:
-                action = input(f"\tRoll remaining {remaining_dice_count} dice (r) or bank {player.turn_score} points (b)? ")
+                action = self.get_input(f"\tRoll remaining {remaining_dice_count} dice (r) or bank {player.turn_score} points (b)? ")
+                if action is None:
+                    return
                 while action not in ["r", "b"]:
-                    action = input("\tInvalid input. Enter (r) to roll or (b) to bank: ")
+                    action = self.get_input("\tInvalid input. Enter (r) to roll or (b) to bank: ")
+                    if action is None:
+                        return
 
                 if action == "b":
                     player.bank()
@@ -238,6 +256,8 @@ class Game():
 
     def play(self):
         print("#####################Welcome to Farkle!#####################")
+        print("Enter (quit) to quit or (melds) to show all melds")
+        print("############################################################")
         while self.game_over != 1:
             self.play_turn()
             self.print_score()
